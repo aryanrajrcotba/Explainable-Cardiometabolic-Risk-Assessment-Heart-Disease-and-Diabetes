@@ -172,11 +172,12 @@ def describe(feature, value):
     return f"{label} {v} {unit}".strip()
 
 
-def plain_language(shap_row, x_row, risk, threshold, features, min_share=0.05):
+def plain_language(shap_row, x_row, risk, threshold, features, avg_risk=None, min_share=0.05):
     """Turn one patient's SHAP values into 2-3 readable sentences.
 
     shap_row: 1-D array aligned with `features`; x_row: Series of raw values.
     A feature is mentioned only if it carries at least `min_share` of the total absolute SHAP mass.
+    avg_risk (optional): the typical patient's risk, used to explain flags that sit below average.
     """
     shap_row = np.asarray(shap_row, dtype=float)
     total = np.abs(shap_row).sum() + 1e-12
@@ -188,6 +189,9 @@ def plain_language(shap_row, x_row, risk, threshold, features, min_share=0.05):
     s1 = (f"The model estimates a {risk:.0%} risk, which is {'above' if flagged else 'below'} the "
           f"screening threshold of {threshold:.0%}, so this patient is flagged as "
           f"{'HIGHER' if flagged else 'LOWER'} risk.")
+    if flagged and avg_risk is not None and risk < avg_risk:
+        s1 += (f" (That is below the average patient's {avg_risk:.0%}, but the threshold is set low on "
+               f"purpose so that real cases are not missed.)")
     sentences = [s1]
     if up:
         sentences.append("The factors raising the risk most are " +

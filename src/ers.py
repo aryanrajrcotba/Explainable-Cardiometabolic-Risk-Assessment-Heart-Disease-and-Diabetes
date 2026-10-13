@@ -21,7 +21,7 @@ FORMULA (every weight is a named constant below; nothing is tuned on the data)
   Level (the badge): relative to what is typical for this model. The cut-offs are the 33rd and
   67th percentile of the ERS of N_REFERENCE random TRAINING patients (test set untouched):
   Low = least reliable third, High = most reliable third. Why relative: with fixed cut-offs
-  (70/40) ~99% of patients were "High", so the badge carried no information. The 0-100 ERS
+  (70/40) 87-100% of heart-test patients were "High", so the badge carried almost no information. The 0-100 ERS
   itself stays absolute. If no reference file exists, the fixed cut-offs below are the fallback.
 
 Run the experiment:  python -m src.ers --dataset heart

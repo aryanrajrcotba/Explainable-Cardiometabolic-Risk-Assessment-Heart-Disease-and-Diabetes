@@ -62,7 +62,8 @@ def assess(ds, model_name, values):
     risk = float(art["calibrated"].predict_proba(row)[0, 1])
     table, attrs = ers.explain_and_score(art["pipeline"], b["boot"], b["X_tr"], row, cuts=b["cuts"])
     feats = ex.original_features(art["pipeline"])
-    text = ex.plain_language(attrs["SHAP"][0], row.iloc[0], risk, art["threshold"], feats)
+    text = ex.plain_language(attrs["SHAP"][0], row.iloc[0], risk, art["threshold"], feats,
+                            avg_risk=float(b["y_tr"].mean()))
     options, cf_msg = [], ""
     if risk >= art["threshold"]:
         options, cf_msg = cfm.suggest(cfg, art, b["X_tr"], b["y_tr"], row)
@@ -110,7 +111,7 @@ def waterfall_figure(res):
     plt.figure()
     shap.plots.waterfall(expl, max_display=9, show=False)
     fig = plt.gcf()
-    fig.set_size_inches(7.5, 4.2)
+    fig.set_size_inches(9, 5)
     return fig
 
 
@@ -212,6 +213,10 @@ with tab_assess:
             st.warning("Explanations partly agree. Treat the top factors as indicative.")
         else:
             st.success("Explanation methods agree and are stable for this patient.")
+        parts = {"agreement between methods": e["agreement"], "LIME stability": e["lime_stability"],
+                 "model (re-training) stability": e["model_stability"]}
+        weakest = min(parts, key=parts.get)
+        st.caption(f"Weakest check: {weakest} ({parts[weakest]:.2f} out of 1).")
         st.caption(f"Level is relative to typical patients of this model "
                    f"(Low < {bundle['cuts'][0]:.0f} <= Medium < {bundle['cuts'][1]:.0f} <= High).")
     with c3:
@@ -280,10 +285,10 @@ with tab_compare:
 with tab_perf:
     st.markdown(f"#### Model performance - {cfg['title']}")
     st.caption("5-fold CV on the training part (mean ± std), then hold-out test. Full tables: `results/`.")
-    st.dataframe(pd.read_csv(RESULTS / f"{ds}_cv_table.csv", index_col=0))
-    st.dataframe(pd.read_csv(RESULTS / f"{ds}_test_table.csv", index_col=0))
+    st.table(pd.read_csv(RESULTS / f"{ds}_cv_table.csv", index_col=0))
+    st.table(pd.read_csv(RESULTS / f"{ds}_test_table.csv", index_col=0))
     st.markdown("**Test performance at each model's cost-sensitive threshold (>= 90% recall on training OOF)**")
-    st.dataframe(pd.read_csv(RESULTS / f"{ds}_test_at_tuned_threshold.csv", index_col=0))
+    st.table(pd.read_csv(RESULTS / f"{ds}_test_at_tuned_threshold.csv", index_col=0))
     for fname, cap in [(f"{ds}_roc_pr.png", "ROC and precision-recall curves (test)"),
                        (f"{ds}_calibration.png", "Calibration"), (f"{ds}_threshold.png", "Threshold choice"),
                        (f"{ds}_fairness_subgroups.png", "Performance by subgroup"),
