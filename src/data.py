@@ -112,6 +112,7 @@ CONFIG = {
             "Cholesterol": ("down", 170),
             "FastingBS": ("down", 0),
             "MaxHR": ("up", None),
+            "Oldpeak": ("down", 0.0),   # exercise-test ST depression; improves with fitness / treatment
         },
         "ui": {"Age": (20, 90, 1), "RestingBP": (80, 200, 1), "Cholesterol": (100, 600, 1),
                "MaxHR": (60, 210, 1), "Oldpeak": (-1.0, 6.5, 0.1)},

@@ -1,0 +1,67 @@
+{
+  "dataset": "heart",
+  "model": "Logistic Regression",
+  "n": 184,
+  "n_wrong": 35,
+  "agreement_rates": {
+    "all three share the same #1 feature": 0.592391304347826,
+    "all three share >=2 of their top-3 features": 0.7282608695652174,
+    "mean pairwise Spearman >= 0.7": 0.9782608695652174
+  },
+  "mean_pairwise": {
+    "SHAP vs LIME": {
+      "spearman": 0.815810276679842,
+      "top3_overlap": 0.621376811594203
+    },
+    "SHAP vs Permutation": {
+      "spearman": 0.9603260869565217,
+      "top3_overlap": 0.9166666666666666
+    },
+    "LIME vs Permutation": {
+      "spearman": 0.8331027667984191,
+      "top3_overlap": 0.6485507246376813
+    }
+  },
+  "ers_distribution": {
+    "mean": 85.60647919411507,
+    "std": 5.654124303918135,
+    "min": 63.45454545454546,
+    "max": 97.38257575757576,
+    "levels": {
+      "High": 72,
+      "Low": 57,
+      "Medium": 55
+    }
+  },
+  "ers_correct_mean": 85.64238017761508,
+  "ers_wrong_mean": 85.45364357864358,
+  "mannwhitney_p_wrong_lower": 0.4592686083799231,
+  "auc_error_detection": {
+    "ERS (low = suspicious)": 0.5056567593480346,
+    "agreement only": 0.4971236816874401,
+    "stability only": 0.5054650047938639,
+    "baseline: closeness to threshold": 0.7397890699904123
+  },
+  "spearman_ers_vs_margin": 0.2688717901826495,
+  "error_rate_by_level": {
+    "High": {
+      "n": 72,
+      "error_rate": 0.19444444444444445
+    },
+    "Medium": {
+      "n": 55,
+      "error_rate": 0.16363636363636364
+    },
+    "Low": {
+      "n": 57,
+      "error_rate": 0.21052631578947367
+    }
+  },
+  "weight_sensitivity_auc": {
+    "w_agree=0.0": 0.5054650047938639,
+    "w_agree=0.25": 0.5069990412272292,
+    "w_agree=0.5": 0.5056567593480346,
+    "w_agree=0.75": 0.49626078619367214,
+    "w_agree=1.0": 0.4972195589645254
+  }
+}

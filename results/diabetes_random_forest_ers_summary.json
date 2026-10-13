@@ -1,0 +1,67 @@
+{
+  "dataset": "diabetes",
+  "model": "Random Forest",
+  "n": 154,
+  "n_wrong": 50,
+  "agreement_rates": {
+    "all three share the same #1 feature": 0.6363636363636364,
+    "all three share >=2 of their top-3 features": 0.8766233766233766,
+    "mean pairwise Spearman >= 0.7": 0.8376623376623377
+  },
+  "mean_pairwise": {
+    "SHAP vs LIME": {
+      "spearman": 0.8041125541125542,
+      "top3_overlap": 0.8311688311688312
+    },
+    "SHAP vs Permutation": {
+      "spearman": 0.9027520098948671,
+      "top3_overlap": 0.8874458874458874
+    },
+    "LIME vs Permutation": {
+      "spearman": 0.7339208410636984,
+      "top3_overlap": 0.800865800865801
+    }
+  },
+  "ers_distribution": {
+    "mean": 81.14615543186972,
+    "std": 9.612610805176567,
+    "min": 45.327380952380956,
+    "max": 97.67857142857143,
+    "levels": {
+      "High": 65,
+      "Low": 49,
+      "Medium": 40
+    }
+  },
+  "ers_correct_mean": 82.63736263736263,
+  "ers_wrong_mean": 78.04444444444444,
+  "mannwhitney_p_wrong_lower": 0.014625863481223208,
+  "auc_error_detection": {
+    "ERS (low = suspicious)": 0.60875,
+    "agreement only": 0.5384615384615385,
+    "stability only": 0.6761538461538462,
+    "baseline: closeness to threshold": 0.465
+  },
+  "spearman_ers_vs_margin": -0.11105260607099869,
+  "error_rate_by_level": {
+    "High": {
+      "n": 65,
+      "error_rate": 0.27692307692307694
+    },
+    "Medium": {
+      "n": 40,
+      "error_rate": 0.275
+    },
+    "Low": {
+      "n": 49,
+      "error_rate": 0.42857142857142855
+    }
+  },
+  "weight_sensitivity_auc": {
+    "w_agree=0.0": 0.6761538461538461,
+    "w_agree=0.25": 0.6477884615384615,
+    "w_agree=0.5": 0.60875,
+    "w_agree=0.75": 0.5666346153846153,
+    "w_agree=1.0": 0.5386538461538461
+  }
+}

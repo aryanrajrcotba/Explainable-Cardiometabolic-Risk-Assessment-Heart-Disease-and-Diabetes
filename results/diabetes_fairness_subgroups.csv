@@ -1,0 +1,6 @@
+group,attribute,n,prevalence,recall,precision,f1,false_negative_rate,roc_auc
+all,overall,768,0.349,0.903,0.518,0.659,0.097,0.835
+45-54,age_group,68,0.603,0.951,0.684,0.796,0.049,0.778
+55-64,age_group,37,0.351,1.0,0.361,0.531,0.0,0.756
+65+,age_group,13,0.308,1.0,0.333,0.5,0.0,0.833
+<45,age_group,650,0.323,0.886,0.514,0.65,0.114,0.846
