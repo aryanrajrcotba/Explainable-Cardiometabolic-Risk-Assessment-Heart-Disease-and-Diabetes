@@ -234,12 +234,6 @@ assessment takes a few seconds (LIME ×5, bootstrap models, DiCE).
 * Test whether the ERS predicts *explanation faithfulness* (deletion / insertion curves), which is what it is designed to measure, instead of prediction correctness.
 * Richer, clinically reviewed definition of "actionable" features with clinician input; causal rather than associational counterfactuals.
 
-## 10. Viva cheat-sheet
 
-1. *Problem:* explanation methods disagree and change between runs, yet apps show one explanation with unearned confidence.
-2. *Novelty:* the ERS gives every single prediction a 0-100 reliability score built from cross-method agreement (SHAP vs LIME vs permutation) **and** two stability checks (LIME re-runs, bootstrap-retrained models), shown as a High / Medium / Low warning in the UI.
-3. *Why it is more than "compare SHAP and LIME":* it is per patient, combines agreement and stability in one documented formula (no tuned weights), and is tested empirically on a whole test set.
-4. *Honest result:* methods agree broadly (SHAP ≈ permutation, LIME the outlier), agreement drops for boosted trees on heart data, but ERS is largely independent of prediction correctness (AUROC ≈ 0.5, one weak positive that does not survive multiple-comparison correction): it audits the explanation, not the prediction.
-5. *Rigour:* leakage-free pipelines, threshold and calibration chosen on training OOF only, ≥ 90 % recall by design, and fairness / cross-hospital checks that expose real gaps (recall 0.70 for women, AUC −0.12 on new hospitals).
 
 *Related ideas to read and cite properly before the viva (check the exact references yourself):* "The Disagreement Problem in Explainable Machine Learning" (Krishna et al., 2022) and Alvarez-Melis & Jaakkola, "On the Robustness of Interpretability Methods" (2018); DiCE (Mothilal et al., 2020); SHAP (Lundberg & Lee, 2017); LIME (Ribeiro et al., 2016).
