@@ -96,6 +96,18 @@ def suggest(cfg, art, X_train, y_train, patient, total=4, seed=SEED):
     if not vary:
         return [], "None of the modifiable factors can move any further in a healthy direction."
 
+    # Cheap feasibility check: put EVERY modifiable factor at its most favourable allowed value.
+    # If the risk is still above the threshold, no counterfactual exists (and DiCE would search in vain).
+    best = patient.copy()
+    for f in vary:
+        direction = cfg["modifiable"][f][0]
+        vals = [float(v) for v in ranges[f]]
+        best.loc[0, f] = min(vals) if direction == "down" else max(vals)
+    if model.predict_proba(best)[0, 1] >= thr:
+        return [], ("Even with the most favourable realistic changes to the modifiable factors the estimated "
+                    "risk stays above the threshold: it is driven mainly by fixed factors (age, sex, clinical "
+                    "findings). Discuss this with a clinician.")
+
     query = patient.copy()
     for c in flags:
         query[c] = query[c].astype(float).astype(str)
@@ -105,7 +117,7 @@ def suggest(cfg, art, X_train, y_train, patient, total=4, seed=SEED):
         for method in ("random", "genetic"):          # random is fast; genetic is the fallback
             try:
                 explainer = dice_ml.Dice(data, dice_model, method=method)
-                extra = {"random_seed": seed} if method == "random" else {}
+                extra = {"random_seed": seed} if method == "random" else {"maxiterations": 100}
                 res = explainer.generate_counterfactuals(
                     query, total_CFs=total, desired_class="opposite", features_to_vary=vary,
                     permitted_range=ranges, verbose=False, **extra)
