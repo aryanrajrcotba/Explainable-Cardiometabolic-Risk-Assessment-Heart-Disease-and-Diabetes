@@ -1,0 +1,13 @@
+[client]
+toolbarMode = "minimal"   # hides the Deploy button
+
+[theme]
+base = "dark"
+primaryColor = "#ff4b6e"
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#171b26"
+textColor = "#e8ecf4"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

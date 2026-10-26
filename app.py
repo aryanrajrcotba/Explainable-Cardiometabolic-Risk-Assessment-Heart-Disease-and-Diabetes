@@ -28,6 +28,46 @@ CAT_OPTIONS = {   # categorical feature -> {stored value: label shown in the sid
     "ST_Slope": {"Up": "Upsloping", "Flat": "Flat", "Down": "Downsloping"},
 }
 
+STYLE = """
+<style>
+.block-container {padding-top: 2.2rem; max-width: 1250px;}
+.hero {padding: 22px 28px; border-radius: 18px; margin-bottom: 14px;
+       background: linear-gradient(120deg, #3a0f24 0%, #1b2140 55%, #0f3b4a 100%);
+       border: 1px solid rgba(255,255,255,.08);}
+.hero h1 {margin: 0; font-size: 2.1rem; font-weight: 800; letter-spacing: -.5px;}
+.hero p {margin: 6px 0 0; opacity: .8; font-size: 1rem;}
+.card {padding: 16px 18px; border-radius: 14px; background: #171b26; border: 1px solid rgba(255,255,255,.07); height: 100%;}
+.card h5 {margin: 0 0 8px; font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; opacity: .65;}
+.pill {display:inline-block; padding: 3px 12px; border-radius: 999px; font-weight: 700; font-size: .85rem;}
+div[data-testid="stMetric"] {background:#171b26; border:1px solid rgba(255,255,255,.07); padding:10px 14px; border-radius:12px;}
+button[data-baseweb="tab"] {font-weight: 600;}
+#MainMenu, footer {visibility: hidden;}
+</style>
+"""
+
+
+def gauge_html(risk, thr):
+    """Semicircle risk gauge (pure SVG): needle = risk, tick = screening threshold."""
+    import math
+    def pt(p, r):
+        a = math.pi * (1 - p)
+        return 120 + r * math.cos(a), 120 - r * math.sin(a)
+    x, y = pt(min(max(risk, 0), 1), 78)
+    tx1, ty1 = pt(thr, 84); tx2, ty2 = pt(thr, 104)
+    col = "#e53935" if risk >= thr else "#43a047"
+    return f"""<svg viewBox="0 0 240 150" width="100%">
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#43a047"/><stop offset=".5" stop-color="#fbc02d"/>
+    <stop offset="1" stop-color="#e53935"/></linearGradient></defs>
+    <path d="M 20 120 A 100 100 0 0 1 220 120" fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round" opacity=".9"/>
+    <line x1="{tx1:.1f}" y1="{ty1:.1f}" x2="{tx2:.1f}" y2="{ty2:.1f}" stroke="white" stroke-width="3"/>
+    <line x1="120" y1="120" x2="{x:.1f}" y2="{y:.1f}" stroke="{col}" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="120" cy="120" r="8" fill="{col}"/>
+    <text x="120" y="108" text-anchor="middle" font-size="26" font-weight="800" fill="white" dy="-34">{risk:.0%}</text>
+    <text x="20" y="140" font-size="9" fill="#aaa" text-anchor="middle">0%</text>
+    <text x="220" y="140" font-size="9" fill="#aaa" text-anchor="middle">100%</text>
+    <text x="{tx2:.1f}" y="{ty2-4:.1f}" font-size="8" fill="white" text-anchor="middle">threshold {thr:.0%}</text></svg>"""
+
+
 def label(f):
     """Sidebar label: readable name, first letter capitalised, acronyms upper-cased."""
     words = [{"ecg": "ECG", "st": "ST", "bmi": "BMI"}.get(w, w) for w in ex.NAMES[f][0].split()]
@@ -69,6 +109,43 @@ def assess(ds, model_name, values):
         options, cf_msg = cfm.suggest(cfg, art, b["X_tr"], b["y_tr"], row)
     return dict(row=row, risk=risk, ers=table.iloc[0].to_dict(), attrs=attrs, feats=feats,
                 text=text, options=options, cf_msg=cf_msg)
+
+
+@st.cache_data(show_spinner=False)
+def train_risks(ds, model_name):
+    b = load_bundle(ds, model_name)
+    return b["art"]["calibrated"].predict_proba(b["X_tr"])[:, 1]
+
+
+def nearest_patients(bundle, row, k=15):
+    """k most similar training patients (z-scored numeric distance + categorical mismatch)."""
+    cfg, X = bundle["cfg"], bundle["X_tr"]
+    num = [c for c in cfg["numeric"] if c not in cfg["binary_numeric"]]
+    sd = X[num].std().replace(0, 1)
+    med = X[num].median()
+    d = (((X[num].fillna(med) - row[num].iloc[0].fillna(med)) / sd) ** 2).sum(axis=1)
+    for c in cfg["categorical"] + cfg["binary_numeric"]:
+        d = d + (X[c] != row[c].iloc[0]).astype(float) * 1.5
+    idx = d.sort_values().index[:k]
+    return X.loc[idx], bundle["y_tr"].loc[idx], np.sqrt(d.loc[idx])
+
+
+def build_report(ds_label, art, res, thr):
+    e = res["ers"]
+    top = np.argsort(-np.abs(res["attrs"]["SHAP"][0]))[:5]
+    lines = [f"# Cardiometabolic risk report - {ds_label}", "",
+             "> Educational tool, not a diagnosis.", "",
+             f"- Estimated risk: **{res['risk']:.0%}** (screening threshold {thr:.0%}) -> "
+             f"{'HIGHER' if res['risk'] >= thr else 'LOWER'}",
+             f"- Model: {art['model_name']} ({art['calibration_method']}-calibrated)",
+             f"- Explanation reliability (ERS): **{e['ERS']:.0f}/100 ({e['level']})**", "",
+             "## Patient values"]
+    lines += [f"- {ex.NAMES[f][0]}: {_short(res['row'].iloc[0][f])}" for f in res["feats"]]
+    lines += ["", "## Top drivers (SHAP)"]
+    lines += [f"- {ex.NAMES[res['feats'][i]][0]}: {'raises' if res['attrs']['SHAP'][0][i] > 0 else 'lowers'} risk"
+              for i in top]
+    lines += ["", "## In plain language", res["text"]]
+    return "\n".join(lines)
 
 
 @st.cache_data(show_spinner=False)
@@ -155,7 +232,10 @@ def signed_panels(res, top=8):
 
 
 # --------------------------------------------------------------------------- page
-st.title("🫀 Explainable Cardiometabolic Risk Assessment")
+st.markdown(STYLE, unsafe_allow_html=True)
+st.markdown("<div class='hero'><h1>🫀 Explainable Cardiometabolic Risk</h1>"
+            "<p>Predict heart-disease and diabetes risk, see <b>why</b>, and see <b>how much to trust the why</b>.</p></div>",
+            unsafe_allow_html=True)
 st.warning("**Educational tool, not a diagnosis.** It was built for a course project on small public "
            "datasets and must not be used to make medical decisions. Talk to a clinician about your health.")
 
@@ -171,7 +251,8 @@ st.sidebar.header("Patient values")
 values = patient_form(ds, bundle)
 go = st.sidebar.button("Assess", type="primary")
 
-tab_assess, tab_compare, tab_perf = st.tabs(["Assessment", "Compare methods", "Model & experiments"])
+tab_assess, tab_whatif, tab_similar, tab_compare, tab_perf = st.tabs(
+    ["Assessment", "🧪 What-if lab", "👥 Similar patients", "Compare methods", "Model & experiments"])
 
 if not go and "last" not in st.session_state:
     with tab_assess:
@@ -193,8 +274,10 @@ thr, risk, e = art["threshold"], res["risk"], res["ers"]
 with tab_assess:
     c1, c2, c3 = st.columns([1.1, 1.4, 1.5])
     with c1:
-        st.metric("Estimated risk", f"{risk:.0%}")
-        st.progress(min(risk, 1.0))
+        st.markdown("##### Estimated risk")
+        st.markdown(gauge_html(risk, thr), unsafe_allow_html=True)
+        pct = float((train_risks(last_ds, last_model) < risk).mean())
+        st.caption(f"Higher than **{pct:.0%}** of patients in the training data.")
         flagged = risk >= thr
         st.markdown(f"**Risk level: {'🔴 HIGHER' if flagged else '🟢 LOWER'}** "
                     f"(screening threshold {thr:.0%})")
@@ -258,6 +341,69 @@ with tab_assess:
                    "associates with lower risk; they are not medical advice or proof that a change will work.")
     else:
         st.info(res["cf_msg"])
+
+# ---------------------------------------------------------------- what-if lab
+with tab_whatif:
+    st.markdown("#### 🧪 What-if lab: change a modifiable factor and watch the risk move")
+    st.caption("Starts from the assessed patient. Only modifiable factors are adjustable. Uses the same calibrated model.")
+    base = res["row"].copy()
+    new = base.copy()
+    cols = st.columns(min(3, len(cfg["modifiable"])))
+    for i, f in enumerate(cfg["modifiable"]):
+        lo, hi, step = cfg["ui"][f] if f in cfg["ui"] else (0, 1, 1)
+        cur = base.iloc[0][f]
+        cur = float(bundle["X_tr"][f].median()) if pd.isna(cur) else float(cur)
+        with cols[i % len(cols)]:
+            if f in cfg["binary_numeric"]:
+                new[f] = float(st.checkbox(label(f), value=bool(cur), key=f"wi_{f}"))
+            else:
+                cast = int if isinstance(step, int) else float
+                new[f] = st.slider(label(f), cast(lo), cast(hi), cast(np.clip(cur, lo, hi)), cast(step), key=f"wi_{f}")
+    new_risk = float(art["calibrated"].predict_proba(new)[0, 1])
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Original risk", f"{risk:.0%}")
+    m2.metric("What-if risk", f"{new_risk:.0%}", f"{(new_risk - risk) * 100:+.1f} pts", delta_color="inverse")
+    m3.metric("Status", "Higher" if new_risk >= thr else "Lower", "crosses threshold" if (new_risk >= thr) != (risk >= thr) else "same side")
+    st.markdown("##### Sensitivity sweep")
+    feat = st.selectbox("Sweep one factor across its range", list(cfg["modifiable"]), format_func=label, key="sweep_f")
+    if feat in cfg["binary_numeric"]:
+        grid = np.array([0.0, 1.0])
+    else:
+        lo, hi, _ = cfg["ui"][feat]
+        grid = np.linspace(lo, hi, 40)
+    sweep = pd.concat([new] * len(grid), ignore_index=True)
+    sweep[feat] = grid
+    pr = art["calibrated"].predict_proba(sweep)[:, 1]
+    fig, ax = plt.subplots(figsize=(8, 3.2))
+    fig.patch.set_alpha(0); ax.set_facecolor("none")
+    ax.plot(grid, pr, color="#ff4b6e", lw=2.5, marker="o" if len(grid) == 2 else None)
+    ax.axhline(thr, color="white", ls="--", lw=1, alpha=.6); ax.text(grid[0], thr + .015, "threshold", color="white", fontsize=8)
+    ax.axvline(new.iloc[0][feat], color="#4fc3f7", lw=1.2)
+    ax.set_ylim(0, 1); ax.set_xlabel(label(feat)); ax.set_ylabel("Estimated risk")
+    for item in [ax.xaxis.label, ax.yaxis.label, *ax.get_xticklabels(), *ax.get_yticklabels()]:
+        item.set_color("white")
+    for sp in ax.spines.values():
+        sp.set_color("#555")
+    st.pyplot(fig, clear_figure=True)
+
+# ---------------------------------------------------------------- similar patients
+with tab_similar:
+    st.markdown("#### 👥 Patients most similar to this one")
+    Xn, yn, dist = nearest_patients(bundle, res["row"])
+    obs = float(yn.mean())
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Model's risk", f"{risk:.0%}")
+    c2.metric(f"Positive in {len(yn)} nearest", f"{obs:.0%}")
+    c3.metric("Gap", f"{(risk - obs) * 100:+.0f} pts",
+              "model and neighbours agree" if abs(risk - obs) < .15 else "check carefully", delta_color="off")
+    st.caption("A sanity check on the model: if real look-alike patients mostly had the condition, a high risk is plausible. "
+               "A large gap means the patient is unusual compared with the training data.")
+    show = Xn.head(8).copy()
+    show.insert(0, "Condition present", np.where(yn.head(8) == 1, "Yes", "No"))
+    show.insert(1, "Distance", dist.head(8).round(2))
+    st.dataframe(show, use_container_width=True)
+    st.download_button("⬇️ Download report (Markdown)", build_report(ds_label, art, res, thr),
+                       file_name=f"{ds}_risk_report.md", mime="text/markdown")
 
 # ---------------------------------------------------------------- tab 2
 with tab_compare:
